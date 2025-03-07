@@ -1,6 +1,7 @@
 package dev.glicio;
 
 import dev.glicio.database.DatabaseHelper;
+import dev.glicio.shop.ShopHandler;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -70,6 +71,7 @@ public class GCraftCore {
         // init database
         LOGGER.info("Initializing database");
         DatabaseHelper.Init();
+        ShopHandler.LoadShops();
 
 
 

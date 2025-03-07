@@ -53,6 +53,7 @@ runs {
         modSource project.sourceSets.main
         dependencies {
             runtime 'org.postgresql:postgresql:42.7.5'
+            runtime 'com.zaxxer:HikariCP:5.0.1'
         }
     }
 
@@ -126,7 +127,8 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
     implementation group: 'org.postgresql', name: 'postgresql', version: '42.7.5'
     jarJar(group: 'org.postgresql', name: 'postgresql', version: '42.7.5')
-
+    implementation group: 'com.zaxxer', name: 'HikariCP', version: '5.0.1'
+    jarJar(group: 'com.zaxxer', name: 'HikariCP', version: '5.0.1')
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 import static dev.glicio.GCraftCore.*;
 import static dev.glicio.database.PlayerDb.*;
 
+import java.sql.SQLException;
+
 @EventBusSubscriber(modid = GCraftCore.MODID)
 public class ChatEventHandler {
 
@@ -56,32 +58,25 @@ public class ChatEventHandler {
         String uuid = player.getUUID().toString();
         String name = player.getName().getString();
         Timestamp now = Timestamp.from(Instant.now());
-        Connection con = DatabaseHelper.getConnection();
 
-        try (con) {
-            if (con == null) {
-                LOGGER.error("Failed to get connection");
-                return;
-            }
+        try (Connection con = DatabaseHelper.getConnection()) {
             GPlayer dbPlayer = getDbPlayer(uuid, con);
             if (dbPlayer == null) {
-                dbPlayer = new GPlayer(name, uuid, null, now);
+                dbPlayer = new GPlayer(name, uuid, now, 0);
                 saveDbPlayer(dbPlayer, con);
             }
             String lastLoginMsg = String.format("Bem vindo de volta, %s, seu último login foi em %s", player.getName().getString(), dbPlayer.getLastLogin());
             player.sendSystemMessage(Component.literal(lastLoginMsg));
             player.sendSystemMessage(Component.literal("Você está no chat local, use /g para entrar no chat global e falar com todos os jogadores"));
+            player.sendSystemMessage(Component.literal("Seu saldo atual é: $" + dbPlayer.getFormattedBalance()));
             updateLastLogin(uuid, con);
             addPlayer(uuid, dbPlayer);
+        } catch (SQLException e) {
+            LOGGER.error("Database error during player login: {}", e.getMessage());
+            player.sendSystemMessage(Component.literal("§cErro ao carregar seus dados. Por favor, tente novamente mais tarde."));
         } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                con.close();
-            } catch (Exception e) {
-                LOGGER.error("Failed to close connection");
-                e.printStackTrace();
-            }
+            LOGGER.error("Error during player login: {}", e.getMessage());
+            player.sendSystemMessage(Component.literal("§cErro ao carregar seus dados. Por favor, tente novamente mais tarde."));
         }
     }
 

@@ -1,25 +1,38 @@
+# GCraftCore
 
-Installation information
-=======
+Core mod for GCraft server
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+## Permissions
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+This mod uses both Minecraft's built-in permission levels and LuckPerms for managing permissions. Below is a comprehensive list of all permissions:
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+### Command Permissions
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+#### Player Commands (Permission Level 0)
+- `/spawn` - Teleport to the server spawn point
+- `/g` - Switch to global chat
+- `/l` - Switch to local chat
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+#### Operator Commands (Permission Level 2)
+- `/setspawn` - Set the server spawn point
+- `/debug` - Debug command for database initialization
+
+### Shop Permissions
+- `gcraftcore.shop.admin` - Allows players to delete any shop, regardless of ownership
+- Shop owners can delete their own shops without this permission
+
+### Chat Permissions
+The mod integrates with LuckPerms for chat formatting:
+- `prefix.{priority}.{prefix}` - Sets the player's chat prefix
+- `color.{color_number}` - Sets the color of the player's prefix
+
+### LuckPerms Integration
+The mod requires LuckPerms to be installed on the server for proper functionality. It uses LuckPerms for:
+- Chat formatting and prefixes
+- Group-based permissions
+- Shop administration permissions
+
+### Permission Levels
+- Level 0: Regular players
+- Level 2: Server operators
+- LuckPerms groups: Custom permissions through LuckPerms groups

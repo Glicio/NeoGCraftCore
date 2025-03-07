@@ -44,6 +44,7 @@ public class WarpCoord {
     }
 
     public Vec3 getPos() {
-        return new Vec3(x, y, z);
+        // Add 0.5 to the coordinates to center the spawn point
+        return new Vec3(x, y, z).add(0.5, 0, 0.5);
     }
 }

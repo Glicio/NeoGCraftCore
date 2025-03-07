@@ -16,31 +16,37 @@ import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 
 import java.sql.Connection;
+import java.sql.SQLException;
+
+import static dev.glicio.GCraftCore.luckPermsApi;
 
 public class SetSpawnCommand {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        //has permission 2 -> operator
-        dispatcher.register(Commands.literal("setspawn").requires(source -> source.hasPermission(2)).executes(SetSpawnCommand::execute));
+        dispatcher.register(Commands.literal("setspawn")
+            .requires(source -> {
+                if (!(source.getEntity() instanceof Player player)) return false;
+                var user = luckPermsApi.getUserManager().getUser(player.getUUID());
+                return user != null && user.getCachedData().getPermissionData().checkPermission("gcraftcore.admin.setspawn").asBoolean();
+            })
+            .executes(SetSpawnCommand::execute));
     }
 
     private static int execute(CommandContext<CommandSourceStack> context) {
-        //TODO: implement luck perms permission
-
         Player player = context.getSource().getPlayer();
+        if (player == null) {
+            LOGGER.error("Player is null in SetSpawnCommand");
+            return 0;
+        }
 
-        assert player != null;
         Vec3 pos = new Vec3(player.getX(), player.getY(), player.getZ());
 
         ResourceKey<Level> currentWorld = player.level().dimension();
         String currentWorldName = currentWorld.location().toString();
 
-        Connection con = DatabaseHelper.getConnection();
-
-        try {
-            assert con != null;
+        try (Connection con = DatabaseHelper.getConnection()) {
             String updateSpawnSQL = "UPDATE coords SET world = ?, x = ?, y = ?, z = ? WHERE id = 'spawn'";
             var updateSpawn = con.prepareStatement(updateSpawnSQL);
             updateSpawn.setString(1, currentWorldName);
@@ -51,10 +57,14 @@ public class SetSpawnCommand {
             Config.spawnCoord = new WarpCoord("spawn", (int) pos.x, (int) pos.y, (int) pos.z, currentWorldName, "Spawn");
             player.sendSystemMessage(Component.literal("Spawn setado com sucesso"));
             LOGGER.info("Spawn alterado por {} para {} nas coordenadas {}, {}, {}", player.getName().getString(), currentWorldName, (int) pos.x, (int) pos.y, (int) pos.z);
-            con.close();
             return 1;
+        } catch (SQLException e) {
+            LOGGER.error("Database error while updating spawn: {}", e.getMessage());
+            player.sendSystemMessage(Component.literal("§cErro ao atualizar o spawn. Por favor, tente novamente mais tarde."));
+            return 0;
         } catch (Exception e) {
-            LOGGER.error("Failed to update spawn coordinates in database: {}", e.getMessage());
+            LOGGER.error("Error while updating spawn: {}", e.getMessage());
+            player.sendSystemMessage(Component.literal("§cErro ao atualizar o spawn"));
             return 0;
         }
     }

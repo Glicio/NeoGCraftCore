@@ -32,7 +32,7 @@ public class LocalChatCommand {
         GPlayer gPlayer = GCraftCore.getPlayer(player.getUUID().toString());
 
         if (gPlayer == null) {
-            gPlayer = new GPlayer(player.getName().getString(), player.getUUID().toString(), null, null);
+            gPlayer = new GPlayer(player.getName().getString(), player.getUUID().toString(), null, 0);
             GCraftCore.addPlayer(player.getUUID().toString(), gPlayer);
         }
 

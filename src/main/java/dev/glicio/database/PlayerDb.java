@@ -20,19 +20,20 @@ public class PlayerDb {
                 return new GPlayer(
                         resultSet.getString("player_name"),
                         resultSet.getString("uuid"),
-                        null,
-                        resultSet.getTimestamp("last_login")
+                        resultSet.getTimestamp("last_login"),
+                        resultSet.getInt("balance")
                 );
             }
             return null;
     }
 
     public static void saveDbPlayer(GPlayer player, Connection connection) throws SQLException {
-            String insertPlayerQuery = "INSERT INTO player (uuid, player_name, last_login) VALUES (?, ?, ?)";
+            String insertPlayerQuery = "INSERT INTO player (uuid, player_name, last_login, balance) VALUES (?, ?, ?, ?)";
             var insertPlayer = connection.prepareStatement(insertPlayerQuery);
             insertPlayer.setString(1, player.getUuid());
             insertPlayer.setString(2, player.getName());
             insertPlayer.setTimestamp(3, Timestamp.from(Instant.now()));
+            insertPlayer.setInt(4, player.getBalance());
             insertPlayer.execute();
     }
 
@@ -42,5 +43,25 @@ public class PlayerDb {
             updatePlayer.setTimestamp(1, Timestamp.from(Instant.now()));
             updatePlayer.setString(2, uuid);
             updatePlayer.execute();
+    }
+    
+    public static void updateBalance(String uuid, int amount, Connection connection) throws SQLException {
+            String updateBalanceQuery = "UPDATE player SET balance = balance + ? WHERE uuid = ?";
+            var updateBalance = connection.prepareStatement(updateBalanceQuery);
+            updateBalance.setInt(1, amount);
+            updateBalance.setString(2, uuid);
+            updateBalance.execute();
+    }
+    
+    public static int getBalance(String uuid, Connection connection) throws SQLException {
+            String getBalanceQuery = "SELECT balance FROM player WHERE uuid = ?";
+            var getBalance = connection.prepareStatement(getBalanceQuery);
+            getBalance.setString(1, uuid);
+            getBalance.execute();
+            var resultSet = getBalance.getResultSet();
+            if (resultSet.next()) {
+                return resultSet.getInt("balance");
+            }
+            return 0;
     }
 }

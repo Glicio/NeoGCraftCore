@@ -39,6 +39,7 @@ public class SpawnCommand {
 
         // Retrieve position and world from the config
         Vec3 pos = Config.spawnCoord.getPos();
+
         String worldName = Config.spawnCoord.getWorld();
 
         // Get the server instance
