@@ -66,3 +66,40 @@ The mod requires LuckPerms to be installed on the server for proper functionalit
 - Level 0: Regular players
 - Level 2: Server operators
 - LuckPerms groups: Custom permissions through LuckPerms groups
+
+## Official Server
+
+GCraftCore is actively used on our official server, which runs the All the Mods modpack. Since this is a server-side mod, you only need to install the client modpack to join.
+
+### Server Information
+- **Server Address:** `mc.glicio.dev`
+- **Modpack:** All the Mods 10
+- **Current Version:** 2.38
+- **Discord:** [Join our community](https://discord.gg/EMjmRh5g)
+
+### How to Join
+
+1. **Install CurseForge:**
+   - Download and install the [CurseForge Launcher](https://www.curseforge.com/download/app)
+   - Launch the application and navigate to the Minecraft section
+
+2. **Install the Modpack:**
+   - Search for "All the Mods 10" in the CurseForge app
+   - Install version 2.38 of the modpack
+   - Wait for the download and installation to complete
+
+3. **Connect to the Server:**
+   - Launch Minecraft through CurseForge
+   - Go to Multiplayer
+   - Click "Add Server"
+   - Enter `mc.glicio.dev` as the server address
+   - Click "Done" and join the server
+
+### Server Availability
+
+Please note that this is a self-hosted server running on dedicated hardware with the following specifications:
+- CPU: Core i7 processor
+- RAM: 32GB
+- Operating Hours: The server is online during active play sessions
+
+Due to the self-hosted nature of the server, it may not be available 24/7. For real-time server status updates and to coordinate with other players, we recommend joining our [Discord community](https://discord.gg/EMjmRh5g).
