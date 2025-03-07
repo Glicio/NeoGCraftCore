@@ -2,6 +2,36 @@
 
 Core mod for GCraft server
 
+GCraftCore is a comprehensive Minecraft server mod designed to enhance the multiplayer experience with essential features for both players and administrators. This mod serves as the foundation for the GCraft server, providing crucial functionality for chat management, player teleportation, and shop systems.
+
+## Features
+
+- **Advanced Chat System**
+  - Global and local chat channels
+  - Custom chat formatting with prefixes
+  - LuckPerms integration for chat permissions
+
+- **Teleportation System**
+  - Server spawn point management
+  - Player spawn commands
+  - Safe teleportation handling
+
+- **Shop System**
+  - Player-owned shops
+  - Admin shops with unlimited inventory
+  - Administrative controls for shop management
+  - Secure trading functionality
+
+- **Permission Management**
+  - Integration with LuckPerms
+  - Granular permission control
+  - Multiple permission levels for different user roles
+
+- **Administrative Tools**
+  - Debug commands for server maintenance
+  - Server spawn point configuration
+  - Shop administration capabilities
+
 ## Permissions
 
 This mod uses both Minecraft's built-in permission levels and LuckPerms for managing permissions. Below is a comprehensive list of all permissions:
