@@ -1,105 +1,123 @@
-# GCraftCore
+# GcraftCore  
 
-Core mod for GCraft server
+GcraftCore is a Minecraft mod built using the **NeoForge API**. Designed specifically for server administrators, it introduces essential features like spawn management, a dynamic shop system, and region claiming.  
 
-GCraftCore is a comprehensive Minecraft server mod designed to enhance the multiplayer experience with essential features for both players and administrators. This mod serves as the foundation for the GCraft server, providing crucial functionality for chat management, player teleportation, and shop systems.
+> **Note**: This mod is server-side only. Players do not need to install it on their clients to join the server.  
 
-## Features
+---
 
-- **Advanced Chat System**
-  - Global and local chat channels
-  - Custom chat formatting with prefixes
-  - LuckPerms integration for chat permissions
+## Features  
 
-- **Teleportation System**
-  - Server spawn point management
-  - Player spawn commands
-  - Safe teleportation handling
+- **Spawn System**: Easily manage and teleport to server spawn points.  
+- **Shop System**: Create player-run or admin-controlled shops with flexible configurations.  
+- **Region System**: Claim and manage server regions (protection features coming soon).  
 
-- **Shop System**
-  - Player-owned shops
-  - Admin shops with unlimited inventory
-  - Administrative controls for shop management
-  - Secure trading functionality
+---
 
-- **Permission Management**
-  - Integration with LuckPerms
-  - Granular permission control
-  - Multiple permission levels for different user roles
+## Requirements  
 
-- **Administrative Tools**
-  - Debug commands for server maintenance
-  - Server spawn point configuration
-  - Shop administration capabilities
+- **Minecraft Version**: [Specify compatibility, e.g., 1.21.1].  
+- **NeoForge**: Ensure your server has NeoForge installed 21.1.125 or greater.  
+- **PostgreSQL**: A PostgreSQL database is required for storing data.  
 
-## Permissions
+---
 
-This mod uses both Minecraft's built-in permission levels and LuckPerms for managing permissions. Below is a comprehensive list of all permissions:
+## Installation  
 
-### Command Permissions
+1. Download the latest version of the mod from the [Releases](https://github.com/Glicio/NeoGCraftCore/releases) page.  
+2. Place the `.jar` file into your server's `mods` folder.  
+3. Configure the mod:  
+   - Launch the server once to generate the configuration file (`config/gcraftcore-common.toml`).  
+   - Update the configuration file with your PostgreSQL connection string and credentials.  
+4. Restart the server to apply the changes.  
 
-#### Player Commands (Permission Level 0)
-- `/spawn` - Teleport to the server spawn point
-- `/g` - Switch to global chat
-- `/l` - Switch to local chat
+---
 
-#### Operator Commands (Permission Level 2)
-- `/setspawn` - Set the server spawn point
-- `/debug` - Debug command for database initialization
+## Features & Commands  
 
-### Shop Permissions
-- `gcraftcore.shop.admin` - Allows players to delete any shop, regardless of ownership
-- Shop owners can delete their own shops without this permission
+### **Spawn System**  
 
-### Chat Permissions
-The mod integrates with LuckPerms for chat formatting:
-- `prefix.{priority}.{prefix}` - Sets the player's chat prefix
-- `color.{color_number}` - Sets the color of the player's prefix
+- **`/setspawn`**  
+  - Sets the server’s spawn location based on the user’s current position and dimension.  
+  - **Permission**: `gcraftcore.admin.setspawn`.  
 
-### LuckPerms Integration
-The mod requires LuckPerms to be installed on the server for proper functionality. It uses LuckPerms for:
-- Chat formatting and prefixes
-- Group-based permissions
-- Shop administration permissions
+- **`/spawn`**  
+  - Teleports the user to the server’s spawn point.  
 
-### Permission Levels
-- Level 0: Regular players
-- Level 2: Server operators
-- LuckPerms groups: Custom permissions through LuckPerms groups
+---
 
-## Official Server
+### **Shop System**  
 
-GCraftCore is actively used on our official server, which runs the All the Mods modpack. Since this is a server-side mod, you only need to install the client modpack to join.
+- **`/adminshop`**  
+  - Toggles Admin Shop Mode.  
+    - Allows creating shops without chests.  
+    - Ignores buyer/seller funds.  
 
-### Server Information
-- **Server Address:** `mc.glicio.dev`
-- **Modpack:** All the Mods 10
-- **Current Version:** 2.38
-- **Discord:** [Join our community](https://discord.gg/EMjmRh5g)
+#### **Creating a Shop**  
 
-### How to Join
+1. Place a sign with the following format:  
+   - **1st Line**: `[loja]`  
+   - **2nd Line**: `Comprar: {quantity}` or `Vender: {quantity}`  
+   - **3rd Line**: `{value}` (use integers or floats separated by a dot).  
+   - **4th Line**: Item name (e.g., sand, stone, dirt).  
 
-1. **Install CurseForge:**
-   - Download and install the [CurseForge Launcher](https://www.curseforge.com/download/app)
-   - Launch the application and navigate to the Minecraft section
+2. Right-click the sign to activate it.  
+   - If successful, the sign’s color will change.  
+   - For non-admin shops, place a chest below the sign for inventory management.  
 
-2. **Install the Modpack:**
-   - Search for "All the Mods 10" in the CurseForge app
-   - Install version 2.38 of the modpack
-   - Wait for the download and installation to complete
+3. Notes:  
+   - Only the shop owner or users with the `gcraftcore.shop.admin` permission can destroy shop signs.  
 
-3. **Connect to the Server:**
-   - Launch Minecraft through CurseForge
-   - Go to Multiplayer
-   - Click "Add Server"
-   - Enter `mc.glicio.dev` as the server address
-   - Click "Done" and join the server
+---
 
-### Server Availability
+### **Region System**  
 
-Please note that this is a self-hosted server running on dedicated hardware with the following specifications:
-- CPU: Core i7 processor
-- RAM: 32GB
-- Operating Hours: The server is online during active play sessions
+- **`/r`**  
+  - Enables region selection mode.  
 
-Due to the self-hosted nature of the server, it may not be available 24/7. For real-time server status updates and to coordinate with other players, we recommend joining our [Discord community](https://discord.gg/EMjmRh5g).
+- **`/r create [name]`**  
+  - Saves the selected region with the specified name to the database.  
+
+- **`/r list`**  
+  - Lists all created regions.  
+
+- **`/r delete`**  
+  - Deletes the region the user is currently within.  
+
+> **Note**: Region protection is not implemented yet but is planned for a future update.  
+
+---
+
+## Configuration  
+
+The mod generates a configuration file (`config/gcraftcore.toml`) on the first launch. Update the following settings as needed:  
+
+- **Database Configuration**:  
+  - `databaseUrl`: PostgreSQL connection string.  
+  - `databaseUser`: Database username.  
+  - `databasePassword`: Database password.  
+
+---
+
+## Permissions  
+
+| Permission                       | Description                                  |  
+|----------------------------------|----------------------------------------------|  
+| `gcraftcore.admin.setspawn`      | Allows setting the spawn location.           |  
+| `gcraftcore.shop.admin`          | Allows managing all shop signs.              |  
+| `gcraftcore.region.admin`        | Allows to manage all regions                 |
+
+---
+
+## Contribution  
+
+We welcome contributions! If you'd like to help, follow these steps:  
+1. Fork the repository.  
+2. Make your changes.  
+3. Open a pull request explaining your improvements.  
+
+
+
+## Support  
+
+For issues or suggestions, create a new issue on the [Issues](https://github.com/Glicio/NeoGCraftCore/issues) page or contact the maintainers.  
