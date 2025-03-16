@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -249,8 +248,8 @@ public class ShopHandler {
         }, executorService);
     }
 
-    private static CompletableFuture<Void> updateBalance(String playerUuid, int amount) {
-        return CompletableFuture.runAsync(() -> {
+    private static CompletableFuture<Integer> updateBalance(String playerUuid, int amount) {
+        return CompletableFuture.supplyAsync(() -> {
             try (Connection con = DatabaseHelper.getConnection()) {
                 dev.glicio.database.PlayerDb.updateBalance(playerUuid, amount, con);
 
@@ -259,8 +258,12 @@ public class ShopHandler {
                 if (player != null) {
                     player.addBalance(amount);
                 }
+                
+                // Get and return the updated balance
+                return dev.glicio.database.PlayerDb.getBalance(playerUuid, con);
             } catch (Exception e) {
                 LOGGER.error("Failed to update player balance: {}", e.getMessage());
+                throw new RuntimeException("Failed to update player balance", e);
             }
         }, executorService);
     }
@@ -318,15 +321,18 @@ public class ShopHandler {
 
     public static CompletableFuture<Boolean> buyFromShop(ShopSign shop, net.minecraft.world.entity.player.Player player) {
         return CompletableFuture.supplyAsync(() -> {
+            if(shop.getOwner().equals(player.getUUID().toString())) {
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cVocê não pode comprar da sua própria loja"), true);
+                return true;
+            }
             if (!shop.isAdmin()) {
                 if (!hasChestBelow(shop, player.level())) {
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Esta loja não tem um baú"));
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cEsta loja não tem um baú"), true);
                     return false;
                 }
 
                 if (!hasEnoughItems(shop, player.level())) {
-                    player.sendSystemMessage(
-                            net.minecraft.network.chat.Component.literal("Esta loja não tem itens suficientes"));
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cEsta loja não tem itens suficientes"), true);
                     return false;
                 }
             }
@@ -336,20 +342,18 @@ public class ShopHandler {
 
             try {
                 if (!hasEnoughBalance(playerUuid, totalCost).get()) {
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Você não tem dinheiro suficiente"));
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cVocê não tem dinheiro suficiente"), true);
                     return false;
                 }
 
                 // Process the transaction
-                updateBalance(playerUuid, -totalCost).get(); // Subtract from buyer
-                if (!shop.isAdmin()) {
-                    updateBalance(shop.getOwner(), totalCost).get(); // Add to seller
-                }
+                int buyerNewBalance = updateBalance(playerUuid, -totalCost).get(); // Subtract from buyer
 
                 // Transfer the items
                 transferItems(shop, player.level(), player);
 
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Compra realizada com sucesso"));
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("Compra realizada. Novo saldo: §2" + 
+                    String.format("%.2f", buyerNewBalance / 100.0)), true);
                 return true;
             } catch (Exception e) {
                 LOGGER.error("Failed to process buy transaction: {}", e.getMessage());
@@ -462,23 +466,25 @@ public class ShopHandler {
 
     public static CompletableFuture<Boolean> sellToShop(ShopSign shop, net.minecraft.world.entity.player.Player player) {
         return CompletableFuture.supplyAsync(() -> {
+            if(shop.getOwner().equals(player.getUUID().toString())) {
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cVocê não pode vender para sua própria loja"), true);
+                return true;
+            }
             if (!shop.isAdmin()) {
                 if (!hasChestBelow(shop, player.level())) {
-                    player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Esta loja não tem um baú"));
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cEsta loja não tem um baú"), true);
                     return false;
                 }
 
                 if (!hasSpaceInChest(shop, player.level())) {
-                    player.sendSystemMessage(
-                            net.minecraft.network.chat.Component.literal("Esta loja não tem espaço suficiente"));
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cEsta loja não tem espaço suficiente"), true);
                     return false;
                 }
 
                 try {
                     // Check if shop owner has enough money
                     if (!hasEnoughBalance(shop.getOwner(), shop.getValue()).get()) {
-                        player.sendSystemMessage(
-                                net.minecraft.network.chat.Component.literal("O dono da loja não tem dinheiro suficiente"));
+                        player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cO dono da loja não tem dinheiro suficiente"), true);
                         return false;
                     }
                 } catch (Exception e) {
@@ -489,7 +495,7 @@ public class ShopHandler {
 
             // Check if player has enough items
             if (!hasEnoughItemsInInventory(player, shop)) {
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Você não tem itens suficientes"));
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cVocê não tem itens suficientes"), true);
                 return false;
             }
 
@@ -497,16 +503,18 @@ public class ShopHandler {
             String playerUuid = player.getUUID().toString();
 
             try {
-                // Process the transaction
+                int sellerNewBalance = updateBalance(playerUuid, totalValue).get(); // Add to seller
+
+                // Deduct money from shop owner if not an admin shop
                 if (!shop.isAdmin()) {
                     updateBalance(shop.getOwner(), -totalValue).get(); // Subtract from shop owner
                 }
-                updateBalance(playerUuid, totalValue).get(); // Add to seller
 
                 // Transfer the items
                 transferItemsToChest(shop, player.level(), player);
 
-                player.sendSystemMessage(net.minecraft.network.chat.Component.literal("Venda realizada com sucesso"));
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("Venda realizada. Novo saldo: §2" + 
+                    String.format("%.2f", sellerNewBalance / 100.0)), true);
                 return true;
             } catch (Exception e) {
                 LOGGER.error("Failed to process sell transaction: {}", e.getMessage());

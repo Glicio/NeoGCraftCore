@@ -6,6 +6,7 @@ import java.sql.*;
 
 import com.mojang.logging.LogUtils;
 import dev.glicio.WarpCoord;
+import dev.glicio.regions.RegionHandler;
 import org.slf4j.Logger;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -92,6 +93,8 @@ public class DatabaseHelper {
 
                 statement.execute(createShopTableSQL);
                 LOGGER.info("Verified or created 'shop' table.");
+
+                RegionHandler.InitTable(connection);
 
                 //get current spawn
                 statement.execute(getDefaultSpawnSQL);

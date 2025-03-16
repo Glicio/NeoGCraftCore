@@ -2,15 +2,20 @@ package dev.glicio;
 
 import java.sql.Timestamp;
 import java.util.UUID;
+
+import dev.glicio.regions.Region;
 import net.luckperms.api.model.user.User;
+import net.minecraft.world.phys.Vec2;
 
 public class GPlayer {
-    private String name;
-    private String uuid;
+    private final String name;
+    private final String uuid;
     private final Timestamp lastLogin;
     private boolean creating_admin_shop = false;
     private int currentChat = 0;
     private int balance = 0;
+    private boolean selectingRegion = false;
+    private Region.Rect2D selection;
 
     public GPlayer(String name, String uuid, Timestamp lastLogin) {
         this.name = name;
@@ -95,4 +100,38 @@ public class GPlayer {
     public void addBalance(int amount) {
         this.balance += amount;
     }
+
+    public void setSelectionTopLeft(int x, int y) {
+        if(this.selection == null) {
+            this.selection = new Region.Rect2D(new Vec2(x, y), new Vec2(x, y));
+            return;
+        }
+        this.selection.setTopLeft(new Vec2(x, y));
+    }
+
+
+    public void setSelectionBottomRight(int x, int y) {
+        if(this.selection == null) {
+            this.selection = new Region.Rect2D(new Vec2(x, y), new Vec2(x, y));
+            return;
+        }
+        this.selection.setBottomRight(new Vec2(x, y));
+    }
+
+    public void clearSelection() {
+        this.selection = null;
+    }
+
+    public Region.Rect2D getSelection() {
+        return this.selection;
+    }
+
+    public void setSelectingRegion(boolean selectingRegion) {
+        this.selectingRegion = selectingRegion;
+    }
+
+    public boolean isSelectingRegion() {
+        return this.selectingRegion;
+    }
+
 }

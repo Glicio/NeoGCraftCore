@@ -10,6 +10,7 @@ import dev.glicio.commands.chat.LocalChatCommand;
 import dev.glicio.commands.economy.BalanceCommand;
 import dev.glicio.commands.economy.BalanceTopCommand;
 import dev.glicio.commands.economy.PayCommand;
+import dev.glicio.commands.region.RegionCommand;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -28,6 +29,7 @@ public class CommandsEventHandler {
         BalanceCommand.register(event.getDispatcher());
         BalanceTopCommand.register(event.getDispatcher());
         PayCommand.register(event.getDispatcher());
+        RegionCommand.register(event.getDispatcher());
     }
 
 }
