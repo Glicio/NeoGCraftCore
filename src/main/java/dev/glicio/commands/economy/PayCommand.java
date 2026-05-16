@@ -2,12 +2,12 @@ package dev.glicio.commands.economy;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.logging.LogUtils;
-import dev.glicio.GCraftCore;
-import dev.glicio.GPlayer;
 import dev.glicio.database.DatabaseHelper;
+import dev.glicio.database.PlayerDao;
+import dev.glicio.model.GPlayer;
+import dev.glicio.service.PlayerService;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -16,117 +16,94 @@ import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 
 public class PayCommand {
+
     private static final Logger LOGGER = LogUtils.getLogger();
-    
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        // Register both 'pay' and 'pagar' commands
-        var payCommand = Commands.literal("pay")
-                .requires(source -> source.hasPermission(0))
-                .then(Commands.argument("player", EntityArgument.player())
-                .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
-                .executes(PayCommand::execute)));
-                
-        var pagarCommand = Commands.literal("pagar")
-                .requires(source -> source.hasPermission(0))
-                .then(Commands.argument("player", EntityArgument.player())
-                .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
-                .executes(PayCommand::execute)));
-                
-        dispatcher.register(payCommand);
-        dispatcher.register(pagarCommand);
+        var cmd = Commands.literal("pay")
+            .requires(source -> source.hasPermission(0))
+            .then(Commands.argument("player", EntityArgument.player())
+            .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
+            .executes(PayCommand::execute)));
+        dispatcher.register(cmd);
+        dispatcher.register(Commands.literal("pagar")
+            .requires(source -> source.hasPermission(0))
+            .then(Commands.argument("player", EntityArgument.player())
+            .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
+            .executes(PayCommand::execute))));
     }
-    
+
     private static int execute(CommandContext<CommandSourceStack> context) {
         Player sender = context.getSource().getPlayer();
         try {
-           
             Player recipient = EntityArgument.getPlayer(context, "player");
             double amount = DoubleArgumentType.getDouble(context, "amount");
-            
-            if (sender == null) {
-                LOGGER.error("This command can only be executed as a player");
-                return 0;
-            }
-            
-            // Convert amount to cents (integer)
+
+            if (sender == null) return 0;
+
             int amountInCents = (int) Math.round(amount * 100);
-            
-            // Check if amount is valid
             if (amountInCents <= 0) {
                 sender.sendSystemMessage(Component.literal("§cValor inválido"));
                 return 0;
             }
-            
-            // Check if trying to pay themselves
             if (sender.getUUID().equals(recipient.getUUID())) {
                 sender.sendSystemMessage(Component.literal("§cVocê não pode pagar a si mesmo"));
                 return 0;
             }
-            
-            // Get sender's GPlayer
-            GPlayer senderGPlayer = GCraftCore.getPlayer(sender.getUUID().toString());
+
+            GPlayer senderGPlayer = PlayerService.get(sender.getUUID().toString());
+            GPlayer recipientGPlayer = PlayerService.get(recipient.getUUID().toString());
+
             if (senderGPlayer == null) {
                 sender.sendSystemMessage(Component.literal("§cErro ao buscar seu saldo"));
                 return 0;
             }
-            
-            // Check if sender has enough money
-            if (senderGPlayer.getBalance() < amountInCents) {
-                sender.sendSystemMessage(Component.literal("§cVocê não tem dinheiro suficiente"));
-                return 0;
-            }
-            
-            // Get recipient's GPlayer
-            GPlayer recipientGPlayer = GCraftCore.getPlayer(recipient.getUUID().toString());
             if (recipientGPlayer == null) {
                 sender.sendSystemMessage(Component.literal("§cJogador não encontrado"));
                 return 0;
             }
-            
-            // Process the transaction
+
+            // Synchronized check-and-deduct on sender
+            synchronized (senderGPlayer) {
+                if (senderGPlayer.getBalance() < amountInCents) {
+                    sender.sendSystemMessage(Component.literal("§cVocê não tem dinheiro suficiente"));
+                    return 0;
+                }
+                senderGPlayer.addBalance(-amountInCents);
+            }
+            recipientGPlayer.addBalance(amountInCents);
+
+            // Persist atomically — rollback in-memory on failure
             try (Connection con = DatabaseHelper.getConnection()) {
                 con.setAutoCommit(false);
-                
-                // Update sender's balance
-                senderGPlayer.addBalance(-amountInCents);
-                dev.glicio.database.PlayerDb.updateBalance(sender.getUUID().toString(), -amountInCents, con);
-                
-                // Update recipient's balance
-                recipientGPlayer.addBalance(amountInCents);
-                dev.glicio.database.PlayerDb.updateBalance(recipient.getUUID().toString(), amountInCents, con);
-                
+                PlayerDao.saveBalance(sender.getUUID().toString(), senderGPlayer.getBalance(), con);
+                PlayerDao.saveBalance(recipient.getUUID().toString(), recipientGPlayer.getBalance(), con);
                 con.commit();
-                
-                // Send success messages
-                String formattedAmount = String.format("%.2f", amount);
-                sender.sendSystemMessage(Component.literal(String.format("§aVocê enviou $%s para %s", formattedAmount, recipient.getName().getString())));
-                recipient.sendSystemMessage(Component.literal(String.format("§aVocê recebeu $%s de %s", formattedAmount, sender.getName().getString())));
-                
-                return 1;
-            } catch (SQLException e) {
-                LOGGER.error("Database error while processing payment: {}", e.getMessage());
-                sender.sendSystemMessage(Component.literal("§cErro ao processar o pagamento. Por favor, tente novamente mais tarde."));
-                return 0;
+                senderGPlayer.clearDirty();
+                recipientGPlayer.clearDirty();
             } catch (Exception e) {
-                LOGGER.error("Error while processing payment: {}", e.getMessage());
-                sender.sendSystemMessage(Component.literal("§cErro ao processar o pagamento"));
+                senderGPlayer.addBalance(amountInCents);
+                recipientGPlayer.addBalance(-amountInCents);
+                LOGGER.error("DB error during payment: {}", e.getMessage());
+                sender.sendSystemMessage(Component.literal("§cErro ao processar o pagamento. Tente novamente."));
                 return 0;
             }
+
+            String formatted = String.format("%.2f", amount);
+            sender.sendSystemMessage(Component.literal("§aVocê enviou $" + formatted + " para " + recipient.getName().getString()));
+            recipient.sendSystemMessage(Component.literal("§aVocê recebeu $" + formatted + " de " + sender.getName().getString()));
+            return 1;
+
         } catch (Exception e) {
-            if(e.getMessage().equals("No player was found")) {
-                if(sender != null) {
-                    sender.sendSystemMessage(Component.literal("§cO Jogador não está online"));
-                }
-            } else {
-                LOGGER.error("Command execution failed: {}", e.getMessage());
-                if(sender != null) {    
-                    sender.sendSystemMessage(Component.literal("§cErro ao processar o pagamento"));
-                }
+            if (sender != null) {
+                String msg = "No player was found".equals(e.getMessage())
+                    ? "§cO jogador não está online"
+                    : "§cErro ao processar o pagamento";
+                sender.sendSystemMessage(Component.literal(msg));
             }
             return 0;
         }
     }
-} 
+}

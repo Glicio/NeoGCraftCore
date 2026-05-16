@@ -2,9 +2,10 @@ package dev.glicio.events;
 
 import com.mojang.logging.LogUtils;
 import dev.glicio.GCraftCore;
-import dev.glicio.GPlayer;
-import dev.glicio.blocks.ShopSign;
-import dev.glicio.shop.ShopHandler;
+import dev.glicio.model.GPlayer;
+import dev.glicio.model.ShopSign;
+import dev.glicio.service.PlayerService;
+import dev.glicio.service.ShopService;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.phys.Vec3;
@@ -13,80 +14,53 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import org.slf4j.Logger;
 
-import java.util.concurrent.CompletableFuture;
-
 @EventBusSubscriber(modid = GCraftCore.MODID)
 public class ShopInteractEventHandler {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
     @SubscribeEvent
-    public static void onShopCreation(PlayerInteractEvent.RightClickBlock event) {
-        var targetPos = event.getPos();
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        var pos = event.getPos();
         var player = event.getEntity();
-        var level = event.getEntity().level();
-        var block = level.getBlockEntity(targetPos);
-        Vec3 pos = new Vec3(targetPos.getX(), targetPos.getY(), targetPos.getZ());
-        if (block != null) {
-            if (block instanceof SignBlockEntity) {
-                var shop = ShopHandler.getShop(pos);
-                if (shop == null) {
-                    try {
-                        // Get the GPlayer to check if they're creating an admin shop
-                        GPlayer gPlayer = GCraftCore.getPlayer(player.getUUID().toString());
-                        boolean isAdminShop = gPlayer != null && gPlayer.isCreating_admin_shop();
-                        
-                        ShopSign shopSign = new ShopSign((SignBlockEntity) block, isAdminShop, player.getUUID().toString());
-                        event.setCanceled(true);
-                        ShopHandler.SaveShop(shopSign).thenRun(() -> {
-                            String message = isAdminShop ? "Loja administrativa criada com sucesso" : "Loja criada com sucesso";
-                            player.sendSystemMessage(Component.literal(message));
-                        }).exceptionally(throwable -> {
-                            LOGGER.error("Failed to create shop: {}", throwable.getMessage());
-                            if (throwable instanceof IllegalArgumentException) {
-                                if (throwable.getMessage().equals("NOT_SHOP")) {
-                                    return null;
-                                }
-                                player.sendSystemMessage(Component.literal(throwable.getMessage()));
-                                return null;
-                            }
-                            return null;
-                        });
-                    } catch (Exception e) {
-                        LOGGER.error("Failed to create shop: {}", e.getMessage());
-                        if (e instanceof IllegalArgumentException) {
-                            if (e.getMessage().equals("NOT_SHOP")) {
-                                return;
-                            }
-                            player.sendSystemMessage(Component.literal(e.getMessage()));
-                            return;
-                        }
-                        return;
+        var block = player.level().getBlockEntity(pos);
+
+        if (!(block instanceof SignBlockEntity)) return;
+
+        Vec3 signPos = new Vec3(pos.getX(), pos.getY(), pos.getZ());
+        ShopSign shop = ShopService.get(signPos);
+
+        if (shop == null) {
+            GPlayer gPlayer = PlayerService.get(player.getUUID().toString());
+            boolean isAdminShop = gPlayer != null && gPlayer.isCreatingAdminShop();
+            try {
+                ShopSign newShop = new ShopSign((SignBlockEntity) block, isAdminShop, player.getUUID().toString());
+                event.setCanceled(true);
+                ShopService.save(newShop).thenRun(() ->
+                    player.sendSystemMessage(Component.literal(isAdminShop ? "Loja administrativa criada com sucesso" : "Loja criada com sucesso"))
+                ).exceptionally(e -> {
+                    if (!(e.getCause() instanceof IllegalArgumentException iae) || !iae.getMessage().equals("NOT_SHOP")) {
+                        player.sendSystemMessage(Component.literal(e.getCause() != null ? e.getCause().getMessage() : "Erro ao criar loja"));
                     }
-                } else {
-                    event.setCanceled(true);
-                    if (shop.getShopType() == ShopSign.ShopType.Comprar) {
-                        ShopHandler.buyFromShop(shop, player).thenAccept(success -> {
-                            if (!success) {
-                                LOGGER.error("Failed to buy from shop");
-                            }
-                        }).exceptionally(throwable -> {
-                            LOGGER.error("Failed to buy from shop: {}", throwable.getMessage());
-                            return null;
-                        });
-                    } else if (shop.getShopType() == ShopSign.ShopType.Vender) {
-                        ShopHandler.sellToShop(shop, player).thenAccept(success -> {
-                            if (!success) {
-                                LOGGER.error("Failed to sell to shop");
-                            }
-                        }).exceptionally(throwable -> {
-                            LOGGER.error("Failed to sell to shop: {}", throwable.getMessage());
-                            return null;
-                        });
-                    }
+                    return null;
+                });
+            } catch (IllegalArgumentException e) {
+                if (!e.getMessage().equals("NOT_SHOP")) {
+                    player.sendSystemMessage(Component.literal(e.getMessage()));
                 }
+            }
+        } else {
+            event.setCanceled(true);
+            if (shop.getShopType() == ShopSign.ShopType.Comprar) {
+                ShopService.buyFromShop(shop, player).exceptionally(e -> {
+                    LOGGER.error("Buy from shop failed: {}", e.getMessage());
+                    return false;
+                });
             } else {
-                LOGGER.info("Block entity is not a sign");
+                ShopService.sellToShop(shop, player).exceptionally(e -> {
+                    LOGGER.error("Sell to shop failed: {}", e.getMessage());
+                    return false;
+                });
             }
         }
     }

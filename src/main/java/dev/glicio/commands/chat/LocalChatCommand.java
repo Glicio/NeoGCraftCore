@@ -3,8 +3,8 @@ package dev.glicio.commands.chat;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.logging.LogUtils;
-import dev.glicio.GCraftCore;
-import dev.glicio.GPlayer;
+import dev.glicio.model.GPlayer;
+import dev.glicio.service.PlayerService;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -13,14 +13,13 @@ import org.slf4j.Logger;
 
 public class LocalChatCommand {
 
-    private static Logger LOGGER = LogUtils.getLogger();
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        //has permission 0 -> player
-        dispatcher.register(Commands.literal("l").requires(source -> source.hasPermission(0)).executes(LocalChatCommand::execute));
-
+        dispatcher.register(Commands.literal("l")
+            .requires(source -> source.hasPermission(0))
+            .executes(LocalChatCommand::execute));
     }
-
 
     private static int execute(CommandContext<CommandSourceStack> context) {
         Player player = context.getSource().getPlayer();
@@ -29,17 +28,11 @@ public class LocalChatCommand {
             return 0;
         }
 
-        GPlayer gPlayer = GCraftCore.getPlayer(player.getUUID().toString());
-
-        if (gPlayer == null) {
-            gPlayer = new GPlayer(player.getName().getString(), player.getUUID().toString(), null, 0);
-            GCraftCore.addPlayer(player.getUUID().toString(), gPlayer);
-        }
+        GPlayer gPlayer = PlayerService.get(player.getUUID().toString());
+        if (gPlayer == null) return 0;
 
         gPlayer.setCurrentChat(0);
-        Component component = Component.literal("Você entrou no chat local");
-        player.sendSystemMessage(component);
-
+        player.sendSystemMessage(Component.literal("Você entrou no chat local"));
         return 1;
     }
 }
